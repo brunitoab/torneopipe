@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Torneo de Parejas</title>
+<style>
+  :root{
+    --verde:#1b7a3d;
+    --verde-osc:#125c2c;
+    --naranja:#ff8c1a;
+    --bg:#f4f7f4;
+    --card:#ffffff;
+    --texto:#1a1a1a;
+    --gris:#7a7a7a;
+    --rojo:#d64545;
+    --oro:#c9971c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--texto);padding-bottom:40px;}
+  header{background:linear-gradient(135deg,var(--verde),var(--verde-osc));color:#fff;padding:16px 16px 12px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  header h1{margin:0;font-size:1.15rem;}
+  header p{margin:4px 0 0;font-size:.75rem;opacity:.9;}
+  nav{display:flex;background:#fff;position:sticky;top:60px;z-index:9;border-bottom:1px solid #ddd;}
+  nav button{flex:1;padding:12px 4px;border:none;background:none;font-size:.85rem;font-weight:600;color:var(--gris);border-bottom:3px solid transparent;}
+  nav button.active{color:var(--verde);border-bottom-color:var(--verde);}
+  main{padding:12px;max-width:600px;margin:0 auto;}
+  .tab{display:none;}
+  .tab.active{display:block;}
+  .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .turno-title{font-weight:700;color:var(--verde-osc);margin:18px 0 8px;font-size:.95rem;}
+  .turno-title:first-child{margin-top:4px;}
+  .match{border-radius:12px;background:var(--card);padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:5px solid var(--naranja);}
+  .match.finalizado{border-left-color:var(--verde);}
+  .match-meta{font-size:.7rem;color:var(--gris);display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;white-space:nowrap;}
+  .badge.pendiente{background:#fff3e0;color:#b56a00;}
+  .badge.finalizado{background:#e6f4ea;color:var(--verde-osc);}
+  .team-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;gap:8px;}
+  .team-name{flex:1;font-weight:600;font-size:.92rem;}
+  .team-name.ganador{color:var(--verde-osc);}
+  .team-name.ganador:after{content:" \2713";}
+  .score-controls{display:flex;align-items:center;gap:6px;}
+  .score-controls button{width:32px;height:32px;border-radius:50%;border:none;background:var(--verde);color:#fff;font-size:1.05rem;font-weight:700;line-height:1;}
+  .score-controls button:disabled{opacity:.35;}
+  .score-controls button.minus{background:#ccc;color:#333;}
+  .score-val{min-width:24px;text-align:center;font-size:1.15rem;font-weight:800;}
+  .match-actions{text-align:right;margin-top:2px;}
+  .match-actions button{background:none;border:none;color:var(--rojo);font-size:.72rem;padding:4px;}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;}
+  th,td{padding:7px 3px;text-align:center;border-bottom:1px solid #eee;}
+  th{color:var(--gris);font-size:.65rem;text-transform:uppercase;}
+  td:first-child,th:first-child{text-align:left;}
+  tr.puesto-1 td{font-weight:700;color:var(--oro);}
+  .pos-num{display:inline-block;width:18px;color:var(--gris);font-weight:700;}
+  .zona-title{font-weight:700;margin:0 0 8px;color:var(--verde-osc);font-size:.95rem;}
+  input[type=text],input[type=time],input[type=number]{width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:.9rem;margin-top:4px;}
+  label{font-size:.75rem;color:var(--gris);font-weight:600;}
+  .field{margin-bottom:12px;}
+  .btn{display:block;width:100%;padding:12px;border:none;border-radius:10px;background:var(--verde);color:#fff;font-weight:700;font-size:.9rem;margin-top:8px;}
+  .btn.secundario{background:#eee;color:#333;}
+  .btn.peligro{background:var(--rojo);}
+  .info{background:#fff8e6;border-radius:10px;padding:10px 12px;font-size:.78rem;color:#7a5a00;margin-bottom:14px;line-height:1.4;}
+  .info b{color:#5a4200;}
+  .resumen{display:flex;justify-content:space-between;font-size:.78rem;color:var(--gris);margin-top:6px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .team-edit{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .team-edit span{width:22px;color:var(--gris);font-size:.78rem;flex-shrink:0;}
+  .team-edit input{flex:1;}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#127934; Torneo de Parejas</h1>
+  <p id="subtitulo">6 parejas &middot; todos contra todos &middot; 3 canchas &middot; a 11 (dif. 2, tope 15)</p>
+</header>
+<nav>
+  <button class="active" data-tab="fixture">Fixture</button>
+  <button data-tab="tabla">Tabla</button>
+  <button data-tab="equipos">Parejas</button>
+</nav>
+<main>
+  <div class="tab active" id="tab-fixture"></div>
+  <div class="tab" id="tab-tabla"></div>
+  <div class="tab" id="tab-equipos"></div>
+</main>
+
+<script>
+const STORAGE_KEY = 'parejasFixtureV3';
+
+function defaultState(){
+  return {
+    teams: ['PIPE/BAILO','BRUNO/PEPA','LULE/LUCAS','JP/BERE','JUAN/IGNA','TANI/ROLDAN'],
+    startTime: '10:00',
+    duration: 15,
+    scores: {}
+  };
+}
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      const d = defaultState();
+      if(!Array.isArray(parsed.teams) || parsed.teams.length !== 6) parsed.teams = d.teams;
+      return Object.assign(d, parsed);
+    }
+  }catch(e){}
+  return defaultState();
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// ---------- Round robin (todos contra todos) ----------
+function roundRobinRounds(teamIdxArr){
+  const n = teamIdxArr.length;
+  const numRounds = n - 1;
+  const half = n / 2;
+  let work = teamIdxArr.slice();
+  const rounds = [];
+  for(let r=0;r<numRounds;r++){
+    const roundMatches = [];
+    for(let i=0;i<half;i++){
+      roundMatches.push([work[i], work[n-1-i]]);
+    }
+    rounds.push(roundMatches);
+    const last = work.pop();
+    work.splice(1,0,last);
+  }
+  return rounds;
+}
+
+function buildMatches(){
+  const idxs = [0,1,2,3,4,5];
+  const rounds = roundRobinRounds(idxs);
+  const list = [];
+  rounds.forEach((roundMatches, t)=>{
+    roundMatches.forEach((pair, courtIdx)=>{
+      list.push({ id:`t${t}-c${courtIdx}`, turno:t, cancha:courtIdx+1, a:pair[0], b:pair[1] });
+    });
+  });
+  return list;
+}
+
+let matches = buildMatches();
+
+function totalTurnos(){
+  return matches.reduce((m,x)=>Math.max(m,x.turno), 0) + 1;
+}
+
+function turnoClock(turnoIdx){
+  const [h,m] = state.startTime.split(':').map(Number);
+  const totalMin = h*60 + m + turnoIdx*state.duration;
+  const hh = Math.floor(totalMin/60) % 24;
+  const mm = totalMin % 60;
+  return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+}
+
+// ---------- Scoring ----------
+function getScore(id){ return state.scores[id] || {a:0,b:0}; }
+function isFinished(a,b){
+  if(a===15 || b===15) return true;
+  if(Math.max(a,b)>=11 && Math.abs(a-b)>=2) return true;
+  return false;
+}
+function changeScore(id, side, delta){
+  const s = getScore(id);
+  const cur = {...s};
+  let val = (cur[side]||0) + delta;
+  if(val < 0) val = 0;
+  if(val > 15) val = 15;
+  cur[side] = val;
+  state.scores[id] = cur;
+  saveState();
+  renderFixture();
+  renderTabla();
+}
+function resetMatch(id){
+  delete state.scores[id];
+  saveState();
+  renderFixture();
+  renderTabla();
+}
+
+// ---------- Render: Fixture ----------
+function renderFixture(){
+  const el = document.getElementById('tab-fixture');
+  const tt = totalTurnos();
+  const finDelUltimo = turnoClock(tt-1);
+  let html = `<div class="info">
+    <b>Cómo se juega:</b> partidos a 11 puntos, hay que ganar por diferencia de 2. Si se llega a 15, gana quien esté arriba en ese momento (no hace falta diferencia de 2).<br>
+    <b>Formato:</b> todos contra todos, ${matches.length} partidos en total repartidos en 3 canchas simultáneas.
+    <div class="resumen"><span>Arranca: ${turnoClock(0)}</span><span>Termina: ${finDelUltimo}</span></div>
+  </div>`;
+
+  for(let t=0; t<tt; t++){
+    html += `<div class="turno-title">Ronda ${t+1} &middot; ${turnoClock(t)}</div>`;
+    const enEstaRonda = matches.filter(m=>m.turno===t).sort((x,y)=>x.cancha-y.cancha);
+    enEstaRonda.forEach(m=>{ html += renderMatch(m); });
+  }
+  el.innerHTML = html;
+}
+
+function renderMatch(m){
+  const s = getScore(m.id);
+  const finished = isFinished(s.a, s.b);
+  const winner = finished ? (s.a>s.b ? 'a':'b') : null;
+  const teamA = state.teams[m.a] ?? '(vacío)';
+  const teamB = state.teams[m.b] ?? '(vacío)';
+  return `
+  <div class="match ${finished?'finalizado':''}" data-id="${m.id}">
+    <div class="match-meta">
+      <span>Cancha ${m.cancha}</span>
+      <span class="badge ${finished?'finalizado':'pendiente'}">${finished?'Finalizado':'Pendiente'}</span>
+    </div>
+    <div class="team-row">
+      <span class="team-name ${winner==='a'?'ganador':''}">${teamA}</span>
+      <div class="score-controls">
+        <button class="minus" onclick="changeScore('${m.id}','a',-1)">−</button>
+        <span class="score-val">${s.a||0}</span>
+        <button ${finished?'disabled':''} onclick="changeScore('${m.id}','a',1)">+</button>
+      </div>
+    </div>
+    <div class="team-row">
+      <span class="team-name ${winner==='b'?'ganador':''}">${teamB}</span>
+      <div class="score-controls">
+        <button class="minus" onclick="changeScore('${m.id}','b',-1)">−</button>
+        <span class="score-val">${s.b||0}</span>
+        <button ${finished?'disabled':''} onclick="changeScore('${m.id}','b',1)">+</button>
+      </div>
+    </div>
+    <div class="match-actions"><button onclick="resetMatch('${m.id}')">Reiniciar resultado</button></div>
+  </div>`;
+}
+
+// ---------- Render: Tabla (en vivo) ----------
+function computeStandings(){
+  const idxs = [0,1,2,3,4,5];
+  const stats = {};
+  idxs.forEach(i=>{ stats[i] = {pj:0,pg:0,pp:0,pf:0,pc:0}; });
+  matches.forEach(m=>{
+    const s = getScore(m.id);
+    if(!isFinished(s.a,s.b)) return;
+    stats[m.a].pj++; stats[m.b].pj++;
+    stats[m.a].pf += s.a; stats[m.a].pc += s.b;
+    stats[m.b].pf += s.b; stats[m.b].pc += s.a;
+    if(s.a>s.b){ stats[m.a].pg++; stats[m.b].pp++; }
+    else { stats[m.b].pg++; stats[m.a].pp++; }
+  });
+  return idxs.map(i=>({idx:i, nombre:state.teams[i], ...stats[i], dif: stats[i].pf-stats[i].pc}))
+    .sort((x,y)=> y.pg-x.pg || y.dif-x.dif || y.pf-x.pf);
+}
+
+function renderTabla(){
+  const el = document.getElementById('tab-tabla');
+  const rows = computeStandings();
+  const jugados = matches.filter(m=>isFinished(getScore(m.id).a, getScore(m.id).b)).length;
+  let html = `<div class="card">
+    <div class="zona-title">Tabla en vivo &middot; ${jugados}/${matches.length} partidos jugados</div>
+    <table><thead><tr><th>#</th><th>Pareja</th><th>PJ</th><th>PG</th><th>PP</th><th>PF</th><th>PC</th><th>DIF</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    html += `<tr class="${i===0 && r.pj>0 ?'puesto-1':''}"><td><span class="pos-num">${i+1}</span></td><td>${r.nombre}</td><td>${r.pj}</td><td>${r.pg}</td><td>${r.pp}</td><td>${r.pf}</td><td>${r.pc}</td><td>${r.dif>0?'+':''}${r.dif}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+  <div class="info">Se ordena por partidos ganados; si hay empate, desempata la diferencia de puntos y después los puntos a favor. La tabla se actualiza sola a medida que cargás resultados.</div>`;
+  el.innerHTML = html;
+}
+
+// ---------- Render: Parejas / Ajustes ----------
+function renderEquipos(){
+  const el = document.getElementById('tab-equipos');
+  let html = `<div class="card">
+    <div class="zona-title">Horario</div>
+    <div class="grid2">
+      <div class="field"><label>Hora de inicio</label><input type="time" value="${state.startTime}" onchange="updateStart(this.value)"></div>
+      <div class="field"><label>Minutos por ronda</label><input type="number" min="5" max="60" value="${state.duration}" onchange="updateDuration(this.value)"></div>
+    </div>
+  </div>`;
+
+  html += `<div class="card"><div class="zona-title">Parejas</div>`;
+  state.teams.forEach((name,i)=>{
+    html += `<div class="team-edit">
+      <span>${i+1}.</span>
+      <input type="text" value="${name}" oninput="updateTeamName(${i}, this.value)">
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card">
+    <button class="btn peligro" onclick="reiniciarTodo()">Reiniciar torneo (borra resultados)</button>
+  </div>`;
+  el.innerHTML = html;
+}
+
+function updateStart(v){ state.startTime = v; saveState(); renderFixture(); }
+function updateDuration(v){ state.duration = parseInt(v)||15; saveState(); renderFixture(); }
+function updateTeamName(i, v){ state.teams[i] = v; saveState(); renderFixture(); renderTabla(); }
+
+function reiniciarTodo(){
+  if(!confirm('Esto borra todos los resultados cargados. ¿Continuar?')) return;
+  const teams = state.teams;
+  state = defaultState();
+  state.teams = teams;
+  matches = buildMatches();
+  saveState();
+  renderAll();
+}
+
+function renderAll(){
+  renderFixture();
+  renderTabla();
+  renderEquipos();
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+renderAll();
+</script>
+</body>
+</html>
